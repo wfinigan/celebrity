@@ -54,8 +54,9 @@ class RedisStore implements Store {
   }
 }
 
-// In-memory fallback for local development. State lives in a single process,
-// so this does NOT work on Vercel — set up Upstash Redis there (see README).
+// In-memory store for local development only. State lives in a single
+// process, so it can never work on Vercel; getStore() refuses to use it
+// there.
 type MemoryGame = { meta: GameMeta; subs: string[] };
 
 class MemoryStore implements Store {
@@ -100,13 +101,17 @@ class MemoryStore implements Store {
 }
 
 export function getStore(): Store {
-  // Vercel's Upstash Marketplace integration sets UPSTASH_*; the legacy
-  // Vercel KV integration sets KV_REST_API_*.
-  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+  // Set by Vercel's Upstash for Redis integration.
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
   if (url && token) {
     return new RedisStore(new Redis({ url, token }));
+  }
+  if (process.env.VERCEL) {
+    throw new Error(
+      "KV_REST_API_URL / KV_REST_API_TOKEN are not set. Connect the Upstash " +
+        "for Redis integration to this Vercel project and redeploy."
+    );
   }
   return new MemoryStore();
 }

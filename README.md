@@ -47,14 +47,13 @@ Locally, game state is kept in memory — no setup needed.
    - In your Vercel project, go to **Storage → Create Database → Upstash
      Redis** (free tier is plenty).
    - Connect it to the project. This sets the
-     `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or
-     `KV_REST_API_URL`/`KV_REST_API_TOKEN`) environment variables, which the
+     `KV_REST_API_URL`/`KV_REST_API_TOKEN` environment variables, which the
      app picks up automatically.
 3. Redeploy. Done!
 
-Without Redis the app will still load, but the game will randomly
-"disappear" because each serverless invocation may land on a different
-instance.
+On Vercel the app refuses to start without those variables (a clear error
+beats games silently disappearing). Locally it uses an in-memory store, so
+no setup is needed for development.
 
 ## Ideas for later
 

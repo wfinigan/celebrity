@@ -1,7 +1,8 @@
 # Celebrity 🌟
 
 A tiny web app for playing the Celebrity name game with friends — no paper
-needed.
+needed. There's exactly one game at a time; everyone plays together in the
+same room.
 
 ## How the game works
 
@@ -13,19 +14,19 @@ needed.
 
 ## How the app works
 
-- **Host** taps "Start a new game" and gets a 4-letter room code + share link.
-- **Players** open the link (or enter the code) and submit names anonymously.
+- **Players** just open the site and put names in the hat, anonymously.
   You can submit more than one.
-- The host watches the submission count tick up, then hits
-  **"Close submissions & start reading"** — submissions lock.
+- **The host** goes to `/host`, taps "Start a new game", watches the
+  submission count tick up, then hits **"Close submissions & start
+  reading"**.
 - The host reads the names as flashcards, **one at a time, never the whole
   list at once**, and can go through the shuffled list **at most twice**.
   Progress is enforced server-side, so refreshing the page doesn't reset it —
   the host is playing too and gets no unfair advantage. After the second
   pass the list is gone for good.
-- Games expire automatically after 6 hours.
-- Want a random person to read instead of the host? Just hand them the
-  host's phone.
+- "Start a new game" empties the hat for the next round. The game expires on
+  its own after 6 hours.
+- Want someone other than the host to read? Just hand them the host's phone.
 
 ## Local development
 
@@ -34,8 +35,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Locally, game state is kept in memory — no setup
-needed.
+Open http://localhost:3000 (players) and http://localhost:3000/host (host).
+Locally, game state is kept in memory — no setup needed.
 
 ## Deploying to Vercel
 
@@ -51,12 +52,12 @@ needed.
      app picks up automatically.
 3. Redeploy. Done!
 
-Without Redis the app will still load, but games will randomly "disappear"
-because each serverless invocation may land on a different instance.
+Without Redis the app will still load, but the game will randomly
+"disappear" because each serverless invocation may land on a different
+instance.
 
 ## Ideas for later
 
-- Multiple rounds / re-open submissions
+- A random-reader picker
 - Score tracking
-- A "read one name at a time" mode with big flashcards
 - Kick out duplicate submissions

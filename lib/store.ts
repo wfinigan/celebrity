@@ -13,45 +13,44 @@ export type GameMeta = {
 
 export const MAX_PASSES = 2;
 
+// There is exactly one game at a time.
 export interface Store {
-  createGame(code: string, meta: GameMeta): Promise<void>;
-  getGame(code: string): Promise<GameMeta | null>;
-  setGame(code: string, meta: GameMeta): Promise<void>;
-  addSubmission(code: string, name: string): Promise<void>;
-  getSubmissions(code: string): Promise<string[]>;
+  // Replaces any existing game and clears its submissions.
+  resetGame(meta: GameMeta): Promise<void>;
+  getGame(): Promise<GameMeta | null>;
+  setGame(meta: GameMeta): Promise<void>;
+  addSubmission(name: string): Promise<void>;
+  getSubmissions(): Promise<string[]>;
 }
 
-const GAME_TTL_SECONDS = 6 * 60 * 60; // games expire after 6 hours
+const GAME_TTL_SECONDS = 6 * 60 * 60; // the game expires after 6 hours
 
-function metaKey(code: string) {
-  return `game:${code}`;
-}
-function subsKey(code: string) {
-  return `game:${code}:subs`;
-}
+const META_KEY = "game:current";
+const SUBS_KEY = "game:current:subs";
 
 class RedisStore implements Store {
   constructor(private redis: Redis) {}
 
-  async createGame(code: string, meta: GameMeta) {
-    await this.redis.set(metaKey(code), meta, { ex: GAME_TTL_SECONDS });
+  async resetGame(meta: GameMeta) {
+    await this.redis.del(SUBS_KEY);
+    await this.redis.set(META_KEY, meta, { ex: GAME_TTL_SECONDS });
   }
 
-  async getGame(code: string) {
-    return await this.redis.get<GameMeta>(metaKey(code));
+  async getGame() {
+    return await this.redis.get<GameMeta>(META_KEY);
   }
 
-  async setGame(code: string, meta: GameMeta) {
-    await this.redis.set(metaKey(code), meta, { ex: GAME_TTL_SECONDS });
+  async setGame(meta: GameMeta) {
+    await this.redis.set(META_KEY, meta, { ex: GAME_TTL_SECONDS });
   }
 
-  async addSubmission(code: string, name: string) {
-    await this.redis.rpush(subsKey(code), name);
-    await this.redis.expire(subsKey(code), GAME_TTL_SECONDS);
+  async addSubmission(name: string) {
+    await this.redis.rpush(SUBS_KEY, name);
+    await this.redis.expire(SUBS_KEY, GAME_TTL_SECONDS);
   }
 
-  async getSubmissions(code: string) {
-    return await this.redis.lrange(subsKey(code), 0, -1);
+  async getSubmissions() {
+    return await this.redis.lrange(SUBS_KEY, 0, -1);
   }
 }
 
@@ -60,41 +59,43 @@ class RedisStore implements Store {
 type MemoryGame = { meta: GameMeta; subs: string[] };
 
 class MemoryStore implements Store {
-  private games: Map<string, MemoryGame>;
+  private box: { game: MemoryGame | null };
 
   constructor() {
-    const g = globalThis as { __celebrityGames?: Map<string, MemoryGame> };
-    g.__celebrityGames ??= new Map();
-    this.games = g.__celebrityGames;
+    const g = globalThis as { __celebrityGame?: { game: MemoryGame | null } };
+    g.__celebrityGame ??= { game: null };
+    this.box = g.__celebrityGame;
   }
 
-  private prune() {
-    const cutoff = Date.now() - GAME_TTL_SECONDS * 1000;
-    for (const [code, game] of this.games) {
-      if (game.meta.createdAt < cutoff) this.games.delete(code);
+  private live(): MemoryGame | null {
+    const game = this.box.game;
+    if (!game) return null;
+    if (game.meta.createdAt < Date.now() - GAME_TTL_SECONDS * 1000) {
+      this.box.game = null;
+      return null;
     }
+    return game;
   }
 
-  async createGame(code: string, meta: GameMeta) {
-    this.prune();
-    this.games.set(code, { meta, subs: [] });
+  async resetGame(meta: GameMeta) {
+    this.box.game = { meta, subs: [] };
   }
 
-  async getGame(code: string) {
-    return this.games.get(code)?.meta ?? null;
+  async getGame() {
+    return this.live()?.meta ?? null;
   }
 
-  async setGame(code: string, meta: GameMeta) {
-    const game = this.games.get(code);
+  async setGame(meta: GameMeta) {
+    const game = this.live();
     if (game) game.meta = meta;
   }
 
-  async addSubmission(code: string, name: string) {
-    this.games.get(code)?.subs.push(name);
+  async addSubmission(name: string) {
+    this.live()?.subs.push(name);
   }
 
-  async getSubmissions(code: string) {
-    return this.games.get(code)?.subs.slice() ?? [];
+  async getSubmissions() {
+    return this.live()?.subs.slice() ?? [];
   }
 }
 

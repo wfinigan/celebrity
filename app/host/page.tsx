@@ -1,71 +1,104 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-type Status = {
-  count: number;
-  revealed: boolean;
-  isHost?: boolean;
-  // Present once revealed:
-  total?: number;
-  served?: number;
-  currentName?: string | null;
-  maxPasses?: number;
-};
+type Status =
+  | { active: false }
+  | {
+      active: true;
+      gameId: number;
+      count: number;
+      revealed: boolean;
+      isHost?: boolean;
+      // Present for the host once revealed:
+      total?: number;
+      served?: number;
+      currentName?: string | null;
+      maxPasses?: number;
+    };
 
-export default function HostPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
-  const code = use(params).code.toUpperCase();
-  const [hostToken, setHostToken] = useState<string | null | undefined>(
-    undefined
-  );
+const TOKEN_KEY = "celebrity-host-token";
+
+export default function HostPage() {
+  const [hostToken, setHostToken] = useState<string | null>(null);
+  const [tokenLoaded, setTokenLoaded] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [joinUrl, setJoinUrl] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setHostToken(localStorage.getItem(`celebrity-host-${code}`));
-    setJoinUrl(`${window.location.origin}/g/${code}`);
-  }, [code]);
+    setHostToken(localStorage.getItem(TOKEN_KEY));
+    setTokenLoaded(true);
+  }, []);
 
   const refresh = useCallback(async () => {
-    if (!hostToken) return;
     try {
-      const res = await fetch(
-        `/api/game/${code}?hostToken=${encodeURIComponent(hostToken)}`
-      );
-      if (res.status === 404 || res.status === 400) {
-        setNotFound(true);
-        return;
-      }
+      const url = hostToken
+        ? `/api/game?hostToken=${encodeURIComponent(hostToken)}`
+        : "/api/game";
+      const res = await fetch(url);
       if (res.ok) setStatus(await res.json());
     } catch {
       // transient network error — next poll will retry
     }
-  }, [code, hostToken]);
+  }, [hostToken]);
 
-  // Poll for the submission count in the lobby. Once reading starts,
-  // stop polling — progress is driven by the "next" clicks.
+  const isReading = !!(
+    status &&
+    status.active &&
+    status.revealed &&
+    status.isHost
+  );
+
+  // Poll while waiting for submissions. Once reading starts, stop —
+  // progress is driven by the "next" clicks.
   useEffect(() => {
+    if (!tokenLoaded) return;
     refresh();
-    if (status?.revealed) return;
+    if (isReading) return;
     const interval = setInterval(refresh, 2000);
     return () => clearInterval(interval);
-  }, [refresh, status?.revealed]);
+  }, [tokenLoaded, refresh, isReading]);
+
+  async function startGame() {
+    const inProgress = status?.active && !status.isHost;
+    if (
+      inProgress &&
+      !window.confirm(
+        "A game is already running on another device. Start a new one anyway? This throws away its names."
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/game", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      localStorage.setItem(TOKEN_KEY, data.hostToken);
+      setHostToken(data.hostToken);
+      setStatus({
+        active: true,
+        gameId: Date.now(),
+        count: 0,
+        revealed: false,
+        isHost: true,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function reveal() {
     if (!hostToken) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/game/${code}/reveal`, {
+      const res = await fetch("/api/game/reveal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostToken }),
@@ -73,7 +106,7 @@ export default function HostPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       setStatus((s) =>
-        s
+        s && s.active
           ? {
               ...s,
               revealed: true,
@@ -95,7 +128,7 @@ export default function HostPage({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/game/${code}/next`, {
+      const res = await fetch("/api/game/next", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostToken }),
@@ -103,7 +136,7 @@ export default function HostPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       setStatus((s) =>
-        s
+        s && s.active
           ? {
               ...s,
               served: data.served,
@@ -119,44 +152,40 @@ export default function HostPage({
     }
   }
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(joinUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — the link is shown as text anyway
-    }
-  }
-
-  if (hostToken === null) {
-    return (
-      <>
-        <h1>Not the host 🙅</h1>
-        <p>
-          This device didn&apos;t create game <strong>{code}</strong>, so it
-          can&apos;t see the reader view. If you&apos;re a player,{" "}
-          <Link href={`/g/${code}`}>join here</Link>.
-        </p>
-        <Link href="/">← Back home</Link>
-      </>
-    );
-  }
-
-  if (notFound) {
-    return (
-      <>
-        <h1>Game not found 🤔</h1>
-        <p>
-          Game <strong>{code}</strong> doesn&apos;t exist or has expired.
-        </p>
-        <Link href="/">← Back home</Link>
-      </>
-    );
-  }
-
-  if (!status) {
+  if (!tokenLoaded || !status) {
     return <p className="center">Loading…</p>;
+  }
+
+  // ----- No game yet, or a game hosted by another device -----
+  if (!status.active || !status.isHost) {
+    return (
+      <>
+        <h1>Host a game 📣</h1>
+        {status.active ? (
+          <div className="card">
+            <h2>A game is already running</h2>
+            <p>
+              It was started on another device ({status.count}{" "}
+              {status.count === 1 ? "name" : "names"} in the hat so far). If
+              that&apos;s stale or you want to take over, start a new game —
+              its names will be thrown away.
+            </p>
+          </div>
+        ) : (
+          <p>
+            Start a game, have everyone open this site and put a name in the
+            hat, then read the list — one name at a time, twice through max.
+          </p>
+        )}
+        <button className="button" onClick={startGame} disabled={busy}>
+          {busy ? "Starting…" : "Start a new game"}
+        </button>
+        {error && <p className="error center">{error}</p>}
+        <p className="center">
+          <Link href="/">← Player page</Link>
+        </p>
+      </>
+    );
   }
 
   // ----- Reading phase: one name at a time, two passes max -----
@@ -173,7 +202,6 @@ export default function HostPage({
     if (finished) {
       return (
         <>
-          <div className="code-badge">{code}</div>
           <div className="card center">
             <h2>The list is gone 🧠</h2>
             <p>
@@ -181,32 +209,34 @@ export default function HostPage({
               go around the room and guess who said who!
             </p>
           </div>
-          <p className="center">
-            <Link href="/">Start another game</Link>
-          </p>
+          <button
+            className="button button-secondary"
+            onClick={startGame}
+            disabled={busy}
+          >
+            Start a new game
+          </button>
+          {error && <p className="error center">{error}</p>}
         </>
       );
     }
 
     if (served === 0) {
       return (
-        <>
-          <div className="code-badge">{code}</div>
-          <div className="card center">
-            <h2>Ready to read? 📣</h2>
-            <p>
-              {total} {total === 1 ? "name is" : "names are"} in the hat.
-              You&apos;ll see one name at a time — never the whole list. You
-              can go through it {maxPasses} times, then it&apos;s gone for
-              good (you&apos;re playing too, no unfair advantage!).
-            </p>
-            <p>Make sure everyone is listening, then start.</p>
-            <button className="button" onClick={nextName} disabled={busy}>
-              Show the first name
-            </button>
-            {error && <p className="error">{error}</p>}
-          </div>
-        </>
+        <div className="card center">
+          <h2>Ready to read? 📣</h2>
+          <p>
+            {total} {total === 1 ? "name is" : "names are"} in the hat.
+            You&apos;ll see one name at a time — never the whole list. You can
+            go through it {maxPasses} times, then it&apos;s gone for good
+            (you&apos;re playing too, no unfair advantage!).
+          </p>
+          <p>Make sure everyone is listening, then start.</p>
+          <button className="button" onClick={nextName} disabled={busy}>
+            Show the first name
+          </button>
+          {error && <p className="error">{error}</p>}
+        </div>
       );
     }
 
@@ -243,18 +273,11 @@ export default function HostPage({
   // ----- Lobby phase: collect submissions -----
   return (
     <>
-      <div>
-        <p className="center">Your game code</p>
-        <div className="code-badge">{code}</div>
-      </div>
-
-      <div className="card">
-        <h2>Invite your friends</h2>
-        <p className="share-link">{joinUrl}</p>
-        <button className="button button-secondary" onClick={copyLink}>
-          {copied ? "Copied! ✓" : "Copy link"}
-        </button>
-      </div>
+      <h1>Hat is open 🎩</h1>
+      <p>
+        Tell everyone to open this site and put their names in. You can
+        submit too — from the <Link href="/">player page</Link>.
+      </p>
 
       <div>
         <div className="count">{status.count}</div>
@@ -278,6 +301,14 @@ export default function HostPage({
         </button>
         {error && <p className="error">{error}</p>}
       </div>
+
+      <button
+        className="button button-secondary"
+        onClick={startGame}
+        disabled={busy}
+      >
+        Restart (empty the hat)
+      </button>
     </>
   );
 }

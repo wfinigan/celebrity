@@ -28,10 +28,19 @@ export async function POST(
 
   if (!game.revealed) {
     const submissions = await store.getSubmissions(code);
+    if (submissions.length === 0) {
+      return NextResponse.json(
+        { error: "No names have been submitted yet." },
+        { status: 409 }
+      );
+    }
     game.revealed = true;
     game.order = shuffle(submissions);
+    game.served = 0;
     await store.setGame(code, game);
   }
 
-  return NextResponse.json({ names: game.order });
+  // Deliberately no names here — the reader gets them one at a time
+  // via the /next endpoint.
+  return NextResponse.json({ ok: true, total: game.order.length });
 }

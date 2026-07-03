@@ -6,9 +6,10 @@ needed.
 ## How the game works
 
 1. Everyone submits a celebrity name from their own phone.
-2. The host reads the full list aloud once or twice.
+2. One person (the host) reads the list aloud, once or twice.
 3. You won't see or hear the names again — remember them!
-4. Go around the room guessing who submitted which name.
+4. Go around the room guessing who submitted which name. The guessing all
+   happens in person — the app is just the hat.
 
 ## How the app works
 
@@ -16,9 +17,15 @@ needed.
 - **Players** open the link (or enter the code) and submit names anonymously.
   You can submit more than one.
 - The host watches the submission count tick up, then hits
-  **"Close submissions & reveal"** — submissions lock and the host gets the
-  shuffled list to read aloud.
+  **"Close submissions & start reading"** — submissions lock.
+- The host reads the names as flashcards, **one at a time, never the whole
+  list at once**, and can go through the shuffled list **at most twice**.
+  Progress is enforced server-side, so refreshing the page doesn't reset it —
+  the host is playing too and gets no unfair advantage. After the second
+  pass the list is gone for good.
 - Games expire automatically after 6 hours.
+- Want a random person to read instead of the host? Just hand them the
+  host's phone.
 
 ## Local development
 

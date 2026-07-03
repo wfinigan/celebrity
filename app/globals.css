@@ -135,33 +135,21 @@ p {
   margin-top: -0.75rem;
 }
 
-.name-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  counter-reset: name;
+.flashcard {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  min-height: 11rem;
+  overflow-wrap: anywhere;
 }
 
-.name-list li {
-  counter-increment: name;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.85rem 1rem;
-  font-size: 1.35rem;
-  font-weight: 600;
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-}
-
-.name-list li::before {
-  content: counter(name);
+.flash-meta {
+  text-align: center;
   color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 400;
-  min-width: 1.25rem;
+  font-size: 0.95rem;
 }
 
 .error {

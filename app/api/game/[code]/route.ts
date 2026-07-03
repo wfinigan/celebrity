@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidCode, normalizeCode } from "@/lib/game";
-import { getStore } from "@/lib/store";
+import { getStore, MAX_PASSES } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +23,25 @@ export async function GET(
   const isHost =
     request.nextUrl.searchParams.get("hostToken") === game.hostToken;
 
+  const total = game.order.length;
   return NextResponse.json({
     count: submissions.length,
     revealed: game.revealed,
-    // The name list is only ever sent to the host.
-    ...(isHost && game.revealed ? { names: game.order } : {}),
     ...(isHost ? { isHost: true } : {}),
+    // Reading progress, so a page refresh resumes where the reader left off.
+    // Never the full list — the reader only ever gets one name at a time.
+    ...(isHost && game.revealed
+      ? {
+          total,
+          served: game.served,
+          // The name currently on screen, so a mid-read refresh resumes on
+          // it — but once both passes are done, nothing comes back.
+          currentName:
+            game.served > 0 && game.served < total * MAX_PASSES
+              ? game.order[(game.served - 1) % total]
+              : null,
+          maxPasses: MAX_PASSES,
+        }
+      : {}),
   });
 }

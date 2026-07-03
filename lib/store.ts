@@ -5,8 +5,13 @@ export type GameMeta = {
   revealed: boolean;
   // Shuffled reading order, fixed at reveal time so re-reads match.
   order: string[];
+  // How many names have been dealt to the reader, across all passes.
+  // The reader may go through the list at most MAX_PASSES times.
+  served: number;
   createdAt: number;
 };
+
+export const MAX_PASSES = 2;
 
 export interface Store {
   createGame(code: string, meta: GameMeta): Promise<void>;

@@ -7,7 +7,11 @@ type Status = {
   count: number;
   revealed: boolean;
   isHost?: boolean;
-  names?: string[];
+  // Present once revealed:
+  total?: number;
+  served?: number;
+  currentName?: string | null;
+  maxPasses?: number;
 };
 
 export default function HostPage({
@@ -21,7 +25,7 @@ export default function HostPage({
   );
   const [status, setStatus] = useState<Status | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [revealing, setRevealing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
   const [copied, setCopied] = useState(false);
@@ -47,19 +51,18 @@ export default function HostPage({
     }
   }, [code, hostToken]);
 
+  // Poll for the submission count in the lobby. Once reading starts,
+  // stop polling — progress is driven by the "next" clicks.
   useEffect(() => {
     refresh();
+    if (status?.revealed) return;
     const interval = setInterval(refresh, 2000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, status?.revealed]);
 
   async function reveal() {
     if (!hostToken) return;
-    if (status && status.count === 0) {
-      setError("No names submitted yet.");
-      return;
-    }
-    setRevealing(true);
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch(`/api/game/${code}/reveal`, {
@@ -70,12 +73,49 @@ export default function HostPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       setStatus((s) =>
-        s ? { ...s, revealed: true, names: data.names } : s
+        s
+          ? {
+              ...s,
+              revealed: true,
+              total: data.total,
+              served: 0,
+              currentName: null,
+            }
+          : s
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
-      setRevealing(false);
+      setBusy(false);
+    }
+  }
+
+  async function nextName() {
+    if (!hostToken || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/game/${code}/next`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostToken }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      setStatus((s) =>
+        s
+          ? {
+              ...s,
+              served: data.served,
+              total: data.total,
+              currentName: data.name ?? s.currentName,
+            }
+          : s
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -95,7 +135,7 @@ export default function HostPage({
         <h1>Not the host 🙅</h1>
         <p>
           This device didn&apos;t create game <strong>{code}</strong>, so it
-          can&apos;t see the host view. If you&apos;re a player,{" "}
+          can&apos;t see the reader view. If you&apos;re a player,{" "}
           <Link href={`/g/${code}`}>join here</Link>.
         </p>
         <Link href="/">← Back home</Link>
@@ -119,31 +159,88 @@ export default function HostPage({
     return <p className="center">Loading…</p>;
   }
 
-  if (status.revealed && status.names) {
+  // ----- Reading phase: one name at a time, two passes max -----
+  if (status.revealed && status.total) {
+    const total = status.total;
+    const served = status.served ?? 0;
+    const maxPasses = status.maxPasses ?? 2;
+    const finished = served >= total * maxPasses;
+    const pass = served === 0 ? 1 : Math.floor((served - 1) / total) + 1;
+    const indexInPass = served === 0 ? 0 : ((served - 1) % total) + 1;
+    const atEndOfPass = indexInPass === total;
+    const onLastPass = pass === maxPasses;
+
+    if (finished) {
+      return (
+        <>
+          <div className="code-badge">{code}</div>
+          <div className="card center">
+            <h2>The list is gone 🧠</h2>
+            <p>
+              All {total} names were read {maxPasses} times. No peeking — now
+              go around the room and guess who said who!
+            </p>
+          </div>
+          <p className="center">
+            <Link href="/">Start another game</Link>
+          </p>
+        </>
+      );
+    }
+
+    if (served === 0) {
+      return (
+        <>
+          <div className="code-badge">{code}</div>
+          <div className="card center">
+            <h2>Ready to read? 📣</h2>
+            <p>
+              {total} {total === 1 ? "name is" : "names are"} in the hat.
+              You&apos;ll see one name at a time — never the whole list. You
+              can go through it {maxPasses} times, then it&apos;s gone for
+              good (you&apos;re playing too, no unfair advantage!).
+            </p>
+            <p>Make sure everyone is listening, then start.</p>
+            <button className="button" onClick={nextName} disabled={busy}>
+              Show the first name
+            </button>
+            {error && <p className="error">{error}</p>}
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
-        <div className="code-badge">{code}</div>
-        <div>
-          <h2 className="center">
-            Read these aloud — once or twice, then it&apos;s memory time 🧠
-          </h2>
+        <div className="flash-meta">
+          Name {indexInPass} of {total} · read-through {pass} of {maxPasses}
         </div>
-        <ol className="name-list">
-          {status.names.map((name, i) => (
-            <li key={i}>{name}</li>
-          ))}
-        </ol>
-        <p className="center">
-          Submissions are closed. When you&apos;re done reading, put the phone
-          down and start guessing!
-        </p>
-        <p className="center">
-          <Link href="/">Start another game</Link>
-        </p>
+        <div className="card flashcard">{status.currentName}</div>
+        {atEndOfPass ? (
+          <div className="card center">
+            <h2>
+              {onLastPass ? "End of the final read 🔒" : "End of the list!"}
+            </h2>
+            <p>
+              {onLastPass
+                ? "Once you continue, the names are gone forever."
+                : "You can read through one more time — after that the list is gone."}
+            </p>
+            <button className="button" onClick={nextName} disabled={busy}>
+              {onLastPass ? "Finish — lock the list" : "Read through again"}
+            </button>
+          </div>
+        ) : (
+          <button className="button" onClick={nextName} disabled={busy}>
+            Next name →
+          </button>
+        )}
+        {error && <p className="error center">{error}</p>}
       </>
     );
   }
 
+  // ----- Lobby phase: collect submissions -----
   return (
     <>
       <div>
@@ -169,15 +266,15 @@ export default function HostPage({
       <div className="card">
         <h2>Everyone in?</h2>
         <p>
-          This closes submissions and shows you the shuffled list to read
-          aloud.
+          This closes submissions. You&apos;ll read the names out one at a
+          time — you can go through the list twice, then it disappears.
         </p>
         <button
           className="button"
           onClick={reveal}
-          disabled={revealing || status.count === 0}
+          disabled={busy || status.count === 0}
         >
-          {revealing ? "Revealing…" : "Close submissions & reveal"}
+          {busy ? "One sec…" : "Close submissions & start reading"}
         </button>
         {error && <p className="error">{error}</p>}
       </div>

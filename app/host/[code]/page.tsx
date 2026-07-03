@@ -10,6 +10,7 @@ type Status = {
   // Present once revealed:
   total?: number;
   served?: number;
+  locked?: boolean;
   currentName?: string | null;
   maxPasses?: number;
 };
@@ -79,6 +80,7 @@ export default function HostPage({
               revealed: true,
               total: data.total,
               served: 0,
+              locked: false,
               currentName: null,
             }
           : s
@@ -104,12 +106,14 @@ export default function HostPage({
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       setStatus((s) =>
         s
-          ? {
-              ...s,
-              served: data.served,
-              total: data.total,
-              currentName: data.name ?? s.currentName,
-            }
+          ? data.done
+            ? { ...s, locked: true, currentName: null }
+            : {
+                ...s,
+                served: data.served,
+                total: data.total,
+                currentName: data.name,
+              }
           : s
       );
     } catch (err) {
@@ -164,7 +168,9 @@ export default function HostPage({
     const total = status.total;
     const served = status.served ?? 0;
     const maxPasses = status.maxPasses ?? 2;
-    const finished = served >= total * maxPasses;
+    // Finished only when the reader has explicitly confirmed past the last
+    // name — the last card stays on screen until then.
+    const finished = !!status.locked;
     const pass = served === 0 ? 1 : Math.floor((served - 1) / total) + 1;
     const indexInPass = served === 0 ? 0 : ((served - 1) % total) + 1;
     const atEndOfPass = indexInPass === total;

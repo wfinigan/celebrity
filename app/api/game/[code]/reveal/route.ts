@@ -37,6 +37,7 @@ export async function POST(
     game.revealed = true;
     game.order = shuffle(submissions);
     game.served = 0;
+    game.locked = false;
     await store.setGame(code, game);
   }
 

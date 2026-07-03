@@ -8,6 +8,9 @@ export type GameMeta = {
   // How many names have been dealt to the reader, across all passes.
   // The reader may go through the list at most MAX_PASSES times.
   served: number;
+  // Set when the reader confirms past the last name; after this, no name
+  // ever comes back — not even the one on screen.
+  locked: boolean;
   createdAt: number;
 };
 

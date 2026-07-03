@@ -34,10 +34,11 @@ export async function GET(
       ? {
           total,
           served: game.served,
+          locked: game.locked,
           // The name currently on screen, so a mid-read refresh resumes on
-          // it — but once both passes are done, nothing comes back.
+          // it — but once the reader locks the list, nothing comes back.
           currentName:
-            game.served > 0 && game.served < total * MAX_PASSES
+            game.served > 0 && !game.locked
               ? game.order[(game.served - 1) % total]
               : null,
           maxPasses: MAX_PASSES,

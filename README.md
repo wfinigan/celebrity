@@ -1,8 +1,7 @@
 # Celebrity 🌟
 
 A tiny web app for playing the Celebrity name game with friends — no paper
-needed. There's exactly one game at a time; everyone plays together in the
-same room.
+needed.
 
 ## How the game works
 
@@ -14,18 +13,18 @@ same room.
 
 ## How the app works
 
-- **Players** just open the site and put names in the hat, anonymously.
+- **Host** taps "Start a new game" and gets a 4-letter room code + share
+  link. The code keeps randos out — only people who have it can join.
+- **Players** open the link (or enter the code) and submit names anonymously.
   You can submit more than one.
-- **The host** goes to `/host`, taps "Start a new game", watches the
-  submission count tick up, then hits **"Close submissions & start
-  reading"**.
+- The host watches the submission count tick up, then hits
+  **"Close submissions & start reading"** — submissions lock.
 - The host reads the names as flashcards, **one at a time, never the whole
   list at once**, and can go through the shuffled list **at most twice**.
   Progress is enforced server-side, so refreshing the page doesn't reset it —
   the host is playing too and gets no unfair advantage. After the second
   pass the list is gone for good.
-- "Start a new game" empties the hat for the next round. The game expires on
-  its own after 6 hours.
+- Games expire automatically after 6 hours.
 - Want someone other than the host to read? Just hand them the host's phone.
 
 ## Local development
@@ -35,8 +34,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 (players) and http://localhost:3000/host (host).
-Locally, game state is kept in memory — no setup needed.
+Open http://localhost:3000. Locally, game state is kept in memory — no setup
+needed.
 
 ## Deploying to Vercel
 
@@ -47,17 +46,15 @@ Locally, game state is kept in memory — no setup needed.
    - In your Vercel project, go to **Storage → Create Database → Upstash
      Redis** (free tier is plenty).
    - Connect it to the project. This sets the
-     `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or
-     `KV_REST_API_URL`/`KV_REST_API_TOKEN`) environment variables, which the
+     `KV_REST_API_URL`/`KV_REST_API_TOKEN` environment variables, which the
      app picks up automatically.
 3. Redeploy. Done!
 
-Without Redis the app will still load, but the game will randomly
-"disappear" because each serverless invocation may land on a different
-instance.
+On Vercel the app refuses to start without those variables (a clear error
+beats games silently disappearing). Locally it uses an in-memory store, so
+no setup is needed for development.
 
 ## Ideas for later
 
-- A random-reader picker
 - Score tracking
 - Kick out duplicate submissions

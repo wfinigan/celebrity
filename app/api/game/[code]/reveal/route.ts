@@ -1,28 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shuffle } from "@/lib/game";
+import { isValidCode, normalizeCode, shuffle } from "@/lib/game";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
+) {
+  const code = normalizeCode((await params).code);
+  if (!isValidCode(code)) {
+    return NextResponse.json({ error: "Invalid game code." }, { status: 400 });
+  }
+
   const body = await request.json().catch(() => null);
   const store = getStore();
-  const game = await store.getGame();
+  const game = await store.getGame(code);
   if (!game) {
-    return NextResponse.json(
-      { error: "There's no game right now." },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Game not found." }, { status: 404 });
   }
   if (body?.hostToken !== game.hostToken) {
     return NextResponse.json(
-      { error: "Only the host can close submissions." },
+      { error: "Only the host can reveal the list." },
       { status: 403 }
     );
   }
 
   if (!game.revealed) {
-    const submissions = await store.getSubmissions();
+    const submissions = await store.getSubmissions(code);
     if (submissions.length === 0) {
       return NextResponse.json(
         { error: "No names have been submitted yet." },
@@ -32,7 +37,7 @@ export async function POST(request: NextRequest) {
     game.revealed = true;
     game.order = shuffle(submissions);
     game.served = 0;
-    await store.setGame(game);
+    await store.setGame(code, game);
   }
 
   // Deliberately no names here — the reader gets them one at a time

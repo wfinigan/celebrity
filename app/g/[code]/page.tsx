@@ -8,6 +8,21 @@ type Status = {
   revealed: boolean;
 };
 
+function getOrCreatePlayerId(code: string): string {
+  const key = `celebrity-player-${code}`;
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : Array.from({ length: 4 }, () =>
+            Math.random().toString(36).slice(2, 10)
+          ).join("-");
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
 export default function PlayerPage({
   params,
 }: {
@@ -16,11 +31,19 @@ export default function PlayerPage({
   const code = use(params).code.toUpperCase();
   const [status, setStatus] = useState<Status | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [name, setName] = useState("");
+  // The name this player has in the hat, if any.
+  const [myName, setMyName] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submittedCount, setSubmittedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPlayerId(getOrCreatePlayerId(code));
+    setMyName(localStorage.getItem(`celebrity-myname-${code}`));
+  }, [code]);
 
   const refresh = useCallback(async () => {
     try {
@@ -43,27 +66,35 @@ export default function PlayerPage({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !playerId) return;
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch(`/api/game/${code}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, playerId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
-      setSubmittedCount((n) => n + 1);
+      const submitted = name.trim().replace(/\s+/g, " ");
+      setMyName(submitted);
+      localStorage.setItem(`celebrity-myname-${code}`, submitted);
+      setEditing(false);
       setName("");
       setStatus((s) => (s ? { ...s, count: data.count } : s));
-      inputRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       refresh();
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function startEditing() {
+    setName(myName ?? "");
+    setEditing(true);
+    setError(null);
   }
 
   if (notFound) {
@@ -84,7 +115,7 @@ export default function PlayerPage({
     );
   }
 
-  if (!status) {
+  if (!status || !playerId) {
     return <p className="hint center">Loading…</p>;
   }
 
@@ -108,13 +139,47 @@ export default function PlayerPage({
     );
   }
 
+  // Already in the hat, not editing: show the name with a change option.
+  if (myName && !editing) {
+    return (
+      <>
+        <header>
+          <p className="eyebrow">Game {code}</p>
+          <h1>You&apos;re in</h1>
+          <p className="lede" style={{ marginTop: "0.6rem" }}>
+            Your name is in the hat. One per person — but you can change it
+            until the hat closes.
+          </p>
+        </header>
+
+        <div className="flashcard" style={{ minHeight: "20vh" }}>
+          {myName}
+        </div>
+
+        <button className="button button-secondary" onClick={startEditing}>
+          Change your name
+        </button>
+
+        <hr className="rule" />
+
+        <div>
+          <div className="count">{status.count}</div>
+          <p className="count-label">
+            {status.count === 1 ? "name" : "names"} in the hat
+          </p>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <header>
         <p className="eyebrow">Game {code}</p>
-        <h1>Put a name in the hat</h1>
+        <h1>{myName ? "Change your name" : "Put a name in the hat"}</h1>
         <p className="lede" style={{ marginTop: "0.6rem" }}>
-          Nobody sees who submitted what — that&apos;s the whole game.
+          One name per person. Nobody sees who submitted what — that&apos;s
+          the whole game.
         </p>
       </header>
 
@@ -136,15 +201,18 @@ export default function PlayerPage({
         >
           {submitting
             ? "Submitting…"
-            : submittedCount > 0
-              ? "Add another name"
+            : myName
+              ? "Replace it"
               : "Put it in the hat"}
         </button>
-        {submittedCount > 0 && (
-          <p className="success">
-            You&apos;re in — {submittedCount}{" "}
-            {submittedCount === 1 ? "name" : "names"} submitted.
-          </p>
+        {myName && (
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => setEditing(false)}
+          >
+            Never mind, keep &ldquo;{myName}&rdquo;
+          </button>
         )}
         {error && <p className="error">{error}</p>}
       </form>

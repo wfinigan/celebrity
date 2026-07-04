@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanName, isValidCode, normalizeCode } from "@/lib/game";
+import { cleanName, isValidCode, isValidPlayerId, normalizeCode } from "@/lib/game";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,14 @@ export async function POST(
       { status: 400 }
     );
   }
+  // One submission per player: the client identifies itself with a random
+  // id, and submitting again replaces that player's name.
+  if (!isValidPlayerId(body?.playerId)) {
+    return NextResponse.json(
+      { error: "Missing player id — reload the page and try again." },
+      { status: 400 }
+    );
+  }
 
   const store = getStore();
   const game = await store.getGame(code);
@@ -34,7 +42,7 @@ export async function POST(
     );
   }
 
-  await store.addSubmission(code, name);
+  await store.setSubmission(code, body.playerId, name);
   const submissions = await store.getSubmissions(code);
   return NextResponse.json({ ok: true, count: submissions.length });
 }

@@ -24,6 +24,10 @@ export function isValidCode(code: string): boolean {
   return code.length === CODE_LENGTH && [...code].every((c) => CODE_ALPHABET.includes(c));
 }
 
+export function isValidPlayerId(raw: unknown): raw is string {
+  return typeof raw === "string" && /^[a-zA-Z0-9-]{8,64}$/.test(raw);
+}
+
 export function shuffle<T>(items: T[]): T[] {
   const result = items.slice();
   for (let i = result.length - 1; i > 0; i--) {

@@ -20,7 +20,8 @@ export interface Store {
   createGame(code: string, meta: GameMeta): Promise<void>;
   getGame(code: string): Promise<GameMeta | null>;
   setGame(code: string, meta: GameMeta): Promise<void>;
-  addSubmission(code: string, name: string): Promise<void>;
+  // One submission per player: submitting again replaces that player's name.
+  setSubmission(code: string, playerId: string, name: string): Promise<void>;
   getSubmissions(code: string): Promise<string[]>;
 }
 
@@ -48,20 +49,20 @@ class RedisStore implements Store {
     await this.redis.set(metaKey(code), meta, { ex: GAME_TTL_SECONDS });
   }
 
-  async addSubmission(code: string, name: string) {
-    await this.redis.rpush(subsKey(code), name);
+  async setSubmission(code: string, playerId: string, name: string) {
+    await this.redis.hset(subsKey(code), { [playerId]: name });
     await this.redis.expire(subsKey(code), GAME_TTL_SECONDS);
   }
 
   async getSubmissions(code: string) {
-    return await this.redis.lrange(subsKey(code), 0, -1);
+    return (await this.redis.hvals(subsKey(code))) as string[];
   }
 }
 
 // In-memory store for local development only. State lives in a single
 // process, so it can never work on Vercel; getStore() refuses to use it
 // there.
-type MemoryGame = { meta: GameMeta; subs: string[] };
+type MemoryGame = { meta: GameMeta; subs: Map<string, string> };
 
 class MemoryStore implements Store {
   private games: Map<string, MemoryGame>;
@@ -81,7 +82,7 @@ class MemoryStore implements Store {
 
   async createGame(code: string, meta: GameMeta) {
     this.prune();
-    this.games.set(code, { meta, subs: [] });
+    this.games.set(code, { meta, subs: new Map() });
   }
 
   async getGame(code: string) {
@@ -93,12 +94,13 @@ class MemoryStore implements Store {
     if (game) game.meta = meta;
   }
 
-  async addSubmission(code: string, name: string) {
-    this.games.get(code)?.subs.push(name);
+  async setSubmission(code: string, playerId: string, name: string) {
+    this.games.get(code)?.subs.set(playerId, name);
   }
 
   async getSubmissions(code: string) {
-    return this.games.get(code)?.subs.slice() ?? [];
+    const subs = this.games.get(code)?.subs;
+    return subs ? [...subs.values()] : [];
   }
 }
 

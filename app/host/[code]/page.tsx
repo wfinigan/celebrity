@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 
+type Player = { name: string; submitted: boolean };
+
 type Status = {
   count: number;
+  players: Player[];
   revealed: boolean;
   isHost?: boolean;
   // Present once revealed:
@@ -280,6 +283,24 @@ export default function HostPage({
         <p className="count-label">
           {status.count === 1 ? "name" : "names"} in the hat
         </p>
+      </div>
+
+      <div className="stack">
+        <p className="eyebrow">Signed up</p>
+        {status.players.length === 0 ? (
+          <p className="hint">Nobody has signed up yet.</p>
+        ) : (
+          <ul className="roster">
+            {status.players.map((p, i) => (
+              <li key={i}>
+                <span className="who">{p.name}</span>
+                <span className={p.submitted ? "chip chip-ok" : "chip"}>
+                  {p.submitted ? "In the hat" : "Thinking…"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="stack">

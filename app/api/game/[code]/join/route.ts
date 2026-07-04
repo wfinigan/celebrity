@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanName, isValidCode, isValidPlayerId, normalizeCode } from "@/lib/game";
+import {
+  cleanName,
+  isValidCode,
+  isValidPlayerId,
+  normalizeCode,
+} from "@/lib/game";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
+// A player signs up with their own name, so everyone can see who's in.
+// Joining again with the same player id just updates the name.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
@@ -17,12 +24,10 @@ export async function POST(
   const name = cleanName(body?.name);
   if (!name) {
     return NextResponse.json(
-      { error: "Please enter a name (60 characters max)." },
+      { error: "Please enter your name (60 characters max)." },
       { status: 400 }
     );
   }
-  // One submission per player: the client identifies itself with a random
-  // id, and submitting again replaces that player's name.
   if (!isValidPlayerId(body?.playerId)) {
     return NextResponse.json(
       { error: "Missing player id — reload the page and try again." },
@@ -37,23 +42,11 @@ export async function POST(
   }
   if (game.revealed) {
     return NextResponse.json(
-      { error: "Submissions are closed — the list has been read!" },
+      { error: "The hat is closed — this round has started." },
       { status: 409 }
     );
   }
 
-  const players = await store.getPlayers(code);
-  if (!(body.playerId in players)) {
-    return NextResponse.json(
-      { error: "Sign up with your name first." },
-      { status: 400 }
-    );
-  }
-
-  await store.setSubmission(code, body.playerId, name);
-  const submissions = await store.getSubmissions(code);
-  return NextResponse.json({
-    ok: true,
-    count: Object.keys(submissions).length,
-  });
+  await store.setPlayer(code, body.playerId, name);
+  return NextResponse.json({ ok: true });
 }

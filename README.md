@@ -15,8 +15,9 @@ needed.
 
 - **Host** taps "Start a new game" and gets a 4-letter room code + share
   link. The code keeps randos out — only people who have it can join.
-- **Players** open the link (or enter the code) and submit names anonymously.
-  You can submit more than one.
+- **Players** open the link (or enter the code) and submit a name
+  anonymously. One name per person — submitting again replaces yours, so you
+  can change it until the hat closes.
 - The host watches the submission count tick up, then hits
   **"Close submissions & start reading"** — submissions lock.
 - The host reads the names as flashcards, **one at a time, never the whole

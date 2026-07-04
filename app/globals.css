@@ -243,6 +243,43 @@ a:focus-visible {
   }
 }
 
+.roster {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.roster li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.roster li:last-child {
+  border-bottom: none;
+}
+
+.roster .who {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.chip-ok {
+  color: var(--success);
+}
+
 .share-link {
   color: var(--muted);
   font-size: 0.9rem;

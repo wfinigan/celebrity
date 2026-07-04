@@ -69,33 +69,40 @@ export default function PlayerPage({
   if (notFound) {
     return (
       <>
-        <h1>Hmm 🤔</h1>
-        <p>
-          There&apos;s no game with code <strong>{code}</strong>. It may have
-          expired.
+        <header>
+          <p className="eyebrow">Game {code}</p>
+          <h1>Nothing here</h1>
+        </header>
+        <p className="lede">
+          There&apos;s no game with this code. It may have expired — check the
+          code with your host.
         </p>
-        <Link href="/">← Back home</Link>
+        <p>
+          <Link href="/">Back to the start</Link>
+        </p>
       </>
     );
   }
 
   if (!status) {
-    return <p className="center">Loading…</p>;
+    return <p className="hint center">Loading…</p>;
   }
 
   if (status.revealed) {
     return (
       <>
-        <div className="code-badge">{code}</div>
-        <div className="card center">
-          <h2>Submissions are closed 🎤</h2>
-          <p>
-            The host is reading the list. Listen up and remember the names —
-            you won&apos;t hear them again!
-          </p>
-        </div>
-        <p className="center">
-          <Link href="/">Start another game</Link>
+        <header>
+          <p className="eyebrow">Game {code}</p>
+          <h1>The hat is closed</h1>
+        </header>
+        <p className="lede">
+          The list is being read. Listen carefully and remember the names —
+          you won&apos;t hear them again.
+        </p>
+        <hr className="rule" />
+        <p className="hint">
+          This page resets when a new game starts.{" "}
+          <Link href="/">Or start one yourself</Link>.
         </p>
       </>
     );
@@ -103,43 +110,46 @@ export default function PlayerPage({
 
   return (
     <>
-      <div className="code-badge">{code}</div>
-
-      {submittedCount > 0 && (
-        <p className="success center">
-          You&apos;re in! You&apos;ve submitted {submittedCount}{" "}
-          {submittedCount === 1 ? "name" : "names"}.
+      <header>
+        <p className="eyebrow">Game {code}</p>
+        <h1>Put a name in the hat</h1>
+        <p className="lede" style={{ marginTop: "0.6rem" }}>
+          Nobody sees who submitted what — that&apos;s the whole game.
         </p>
-      )}
+      </header>
 
-      <div className="card">
-        <h2>{submittedCount > 0 ? "Add another name" : "Submit a name"}</h2>
-        <p>
-          Nobody will see who submitted what — that&apos;s the whole game.
-        </p>
-        <form
-          onSubmit={submit}
-          style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}
+      <form className="stack" onSubmit={submit}>
+        <input
+          ref={inputRef}
+          className="input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Dolly Parton"
+          aria-label="Celebrity name"
+          maxLength={60}
+          autoFocus
+        />
+        <button
+          className="button"
+          type="submit"
+          disabled={submitting || !name.trim()}
         >
-          <input
-            ref={inputRef}
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Dolly Parton"
-            maxLength={60}
-            autoFocus
-          />
-          <button
-            className="button"
-            type="submit"
-            disabled={submitting || !name.trim()}
-          >
-            {submitting ? "Submitting…" : "Submit"}
-          </button>
-        </form>
+          {submitting
+            ? "Submitting…"
+            : submittedCount > 0
+              ? "Add another name"
+              : "Put it in the hat"}
+        </button>
+        {submittedCount > 0 && (
+          <p className="success">
+            You&apos;re in — {submittedCount}{" "}
+            {submittedCount === 1 ? "name" : "names"} submitted.
+          </p>
+        )}
         {error && <p className="error">{error}</p>}
-      </div>
+      </form>
+
+      <hr className="rule" />
 
       <div>
         <div className="count">{status.count}</div>

@@ -136,13 +136,18 @@ export default function HostPage({
   if (hostToken === null) {
     return (
       <>
-        <h1>Not the host 🙅</h1>
-        <p>
-          This device didn&apos;t create game <strong>{code}</strong>, so it
-          can&apos;t see the reader view. If you&apos;re a player,{" "}
+        <header>
+          <p className="eyebrow">Game {code}</p>
+          <h1>Not the host</h1>
+        </header>
+        <p className="lede">
+          This device didn&apos;t start game {code}, so it can&apos;t read the
+          list. If you&apos;re playing,{" "}
           <Link href={`/g/${code}`}>join here</Link>.
         </p>
-        <Link href="/">← Back home</Link>
+        <p>
+          <Link href="/">Back to the start</Link>
+        </p>
       </>
     );
   }
@@ -150,17 +155,22 @@ export default function HostPage({
   if (notFound) {
     return (
       <>
-        <h1>Game not found 🤔</h1>
-        <p>
-          Game <strong>{code}</strong> doesn&apos;t exist or has expired.
+        <header>
+          <p className="eyebrow">Game {code}</p>
+          <h1>Nothing here</h1>
+        </header>
+        <p className="lede">
+          This game doesn&apos;t exist or has expired.
         </p>
-        <Link href="/">← Back home</Link>
+        <p>
+          <Link href="/">Back to the start</Link>
+        </p>
       </>
     );
   }
 
   if (!status) {
-    return <p className="center">Loading…</p>;
+    return <p className="hint center">Loading…</p>;
   }
 
   // ----- Reading phase: one name at a time, two passes max -----
@@ -179,15 +189,16 @@ export default function HostPage({
     if (finished) {
       return (
         <>
-          <div className="code-badge">{code}</div>
-          <div className="card center">
-            <h2>The list is gone 🧠</h2>
-            <p>
-              All {total} names were read {maxPasses} times. No peeking — now
-              go around the room and guess who said who!
-            </p>
-          </div>
-          <p className="center">
+          <header>
+            <p className="eyebrow">Game {code}</p>
+            <h1>The list is gone</h1>
+          </header>
+          <p className="lede">
+            All {total} names were read {maxPasses} times, and there&apos;s no
+            way to see them again. Go around the room and guess who said who.
+          </p>
+          <hr className="rule" />
+          <p>
             <Link href="/">Start another game</Link>
           </p>
         </>
@@ -197,48 +208,49 @@ export default function HostPage({
     if (served === 0) {
       return (
         <>
-          <div className="code-badge">{code}</div>
-          <div className="card center">
-            <h2>Ready to read? 📣</h2>
-            <p>
-              {total} {total === 1 ? "name is" : "names are"} in the hat.
-              You&apos;ll see one name at a time — never the whole list. You
-              can go through it {maxPasses} times, then it&apos;s gone for
-              good (you&apos;re playing too, no unfair advantage!).
-            </p>
-            <p>Make sure everyone is listening, then start.</p>
+          <header>
+            <p className="eyebrow">Game {code}</p>
+            <h1>Ready to read?</h1>
+          </header>
+          <p className="lede">
+            {total} {total === 1 ? "name is" : "names are"} in the hat.
+            You&apos;ll see one at a time — never the whole list — and you can
+            go through it {maxPasses} times before it&apos;s gone for good.
+            You&apos;re playing too; no unfair advantage.
+          </p>
+          <div className="stack">
             <button className="button" onClick={nextName} disabled={busy}>
               Show the first name
             </button>
-            {error && <p className="error">{error}</p>}
+            <p className="hint">Make sure everyone is listening first.</p>
           </div>
+          {error && <p className="error">{error}</p>}
         </>
       );
     }
 
     return (
       <>
-        <div className="flash-meta">
+        <p className="flash-meta">
           Name {indexInPass} of {total} · read-through {pass} of {maxPasses}
+        </p>
+        <div className="flashcard" key={served}>
+          {status.currentName}
         </div>
-        <div className="card flashcard">{status.currentName}</div>
         {atEndOfPass ? (
-          <div className="card center">
-            <h2>
-              {onLastPass ? "End of the final read 🔒" : "End of the list!"}
-            </h2>
-            <p>
+          <div className="stack">
+            <p className="hint center">
               {onLastPass
-                ? "Once you continue, the names are gone forever."
-                : "You can read through one more time — after that the list is gone."}
+                ? "End of the final read. Once you continue, the names are gone forever."
+                : "End of the list. You can read it once more — after that it's gone."}
             </p>
             <button className="button" onClick={nextName} disabled={busy}>
-              {onLastPass ? "Finish — lock the list" : "Read through again"}
+              {onLastPass ? "Finish — lock the list" : "Read it again"}
             </button>
           </div>
         ) : (
           <button className="button" onClick={nextName} disabled={busy}>
-            Next name →
+            Next name
           </button>
         )}
         {error && <p className="error center">{error}</p>}
@@ -249,18 +261,19 @@ export default function HostPage({
   // ----- Lobby phase: collect submissions -----
   return (
     <>
-      <div>
-        <p className="center">Your game code</p>
+      <header>
+        <p className="eyebrow">Your game code</p>
         <div className="code-badge">{code}</div>
-      </div>
+      </header>
 
-      <div className="card">
-        <h2>Invite your friends</h2>
+      <div className="stack">
         <p className="share-link">{joinUrl}</p>
         <button className="button button-secondary" onClick={copyLink}>
-          {copied ? "Copied! ✓" : "Copy link"}
+          {copied ? "Copied" : "Copy the join link"}
         </button>
       </div>
+
+      <hr className="rule" />
 
       <div>
         <div className="count">{status.count}</div>
@@ -269,19 +282,18 @@ export default function HostPage({
         </p>
       </div>
 
-      <div className="card">
-        <h2>Everyone in?</h2>
-        <p>
-          This closes submissions. You&apos;ll read the names out one at a
-          time — you can go through the list twice, then it disappears.
-        </p>
+      <div className="stack">
         <button
           className="button"
           onClick={reveal}
           disabled={busy || status.count === 0}
         >
-          {busy ? "One sec…" : "Close submissions & start reading"}
+          {busy ? "One moment…" : "Close the hat & start reading"}
         </button>
+        <p className="hint">
+          Locks submissions. You&apos;ll read one name at a time, twice
+          through at most — then the list disappears.
+        </p>
         {error && <p className="error">{error}</p>}
       </div>
     </>

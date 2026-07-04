@@ -36,45 +36,42 @@ export default function Home() {
 
   return (
     <>
-      <div>
-        <h1>Celebrity 🌟</h1>
-        <p>
-          Everyone submits a name. The host reads the list aloud — remember
-          them, then guess who said who.
+      <header>
+        <p className="eyebrow">The name game</p>
+        <h1>Celebrity</h1>
+        <p className="lede" style={{ marginTop: "0.6rem" }}>
+          Everyone puts a name in the hat. One person reads the list aloud —
+          remember it, then guess who said who.
         </p>
-      </div>
+      </header>
 
-      <div className="card">
-        <h2>Host a game</h2>
-        <p>Get a room code your friends can join.</p>
+      <div className="stack">
         <button className="button" onClick={createGame} disabled={creating}>
-          {creating ? "Creating…" : "Start a new game"}
+          {creating ? "Starting…" : "Start a new game"}
         </button>
+        <p className="hint">You&apos;ll get a code your friends join with.</p>
       </div>
 
-      <div className="card">
-        <h2>Join a game</h2>
-        <form
-          onSubmit={joinGame}
-          style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}
-        >
-          <input
-            className="input input-code"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            placeholder="CODE"
-            maxLength={4}
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <button className="button button-secondary" type="submit">
-            Join
-          </button>
-        </form>
-      </div>
+      <div className="divider">or join a game</div>
 
-      {error && <p className="error center">{error}</p>}
+      <form className="stack" onSubmit={joinGame}>
+        <input
+          className="input input-code"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+          placeholder="CODE"
+          aria-label="Game code"
+          maxLength={4}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <button className="button button-secondary" type="submit">
+          Join
+        </button>
+      </form>
+
+      {error && <p className="error">{error}</p>}
     </>
   );
 }

@@ -27,7 +27,7 @@ export async function POST(
   }
 
   if (!game.revealed) {
-    const submissions = await store.getSubmissions(code);
+    const submissions = Object.values(await store.getSubmissions(code));
     if (submissions.length === 0) {
       return NextResponse.json(
         { error: "No names have been submitted yet." },

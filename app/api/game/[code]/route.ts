@@ -19,13 +19,26 @@ export async function GET(
     return NextResponse.json({ error: "Game not found." }, { status: 404 });
   }
 
-  const submissions = await store.getSubmissions(code);
+  const [submissions, players] = await Promise.all([
+    store.getSubmissions(code),
+    store.getPlayers(code),
+  ]);
   const isHost =
     request.nextUrl.searchParams.get("hostToken") === game.hostToken;
 
+  // Who's in and whether their slip is in the hat — visible to everyone.
+  // Celebrity names themselves are never in here.
+  const roster = Object.entries(players)
+    .map(([playerId, name]) => ({
+      name,
+      submitted: playerId in submissions,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const total = game.order.length;
   return NextResponse.json({
-    count: submissions.length,
+    count: Object.keys(submissions).length,
+    players: roster,
     revealed: game.revealed,
     ...(isHost ? { isHost: true } : {}),
     // Reading progress, so a page refresh resumes where the reader left off.

@@ -20,9 +20,13 @@ export interface Store {
   createGame(code: string, meta: GameMeta): Promise<void>;
   getGame(code: string): Promise<GameMeta | null>;
   setGame(code: string, meta: GameMeta): Promise<void>;
+  // Who's playing: playerId → the player's own (display) name.
+  setPlayer(code: string, playerId: string, name: string): Promise<void>;
+  getPlayers(code: string): Promise<Record<string, string>>;
   // One submission per player: submitting again replaces that player's name.
   setSubmission(code: string, playerId: string, name: string): Promise<void>;
-  getSubmissions(code: string): Promise<string[]>;
+  // playerId → submitted celebrity name.
+  getSubmissions(code: string): Promise<Record<string, string>>;
 }
 
 const GAME_TTL_SECONDS = 6 * 60 * 60; // games expire after 6 hours
@@ -32,6 +36,9 @@ function metaKey(code: string) {
 }
 function subsKey(code: string) {
   return `game:${code}:subs`;
+}
+function playersKey(code: string) {
+  return `game:${code}:players`;
 }
 
 class RedisStore implements Store {
@@ -49,20 +56,37 @@ class RedisStore implements Store {
     await this.redis.set(metaKey(code), meta, { ex: GAME_TTL_SECONDS });
   }
 
+  async setPlayer(code: string, playerId: string, name: string) {
+    await this.redis.hset(playersKey(code), { [playerId]: name });
+    await this.redis.expire(playersKey(code), GAME_TTL_SECONDS);
+  }
+
+  async getPlayers(code: string) {
+    return ((await this.redis.hgetall(playersKey(code))) ??
+      {}) as Record<string, string>;
+  }
+
   async setSubmission(code: string, playerId: string, name: string) {
     await this.redis.hset(subsKey(code), { [playerId]: name });
     await this.redis.expire(subsKey(code), GAME_TTL_SECONDS);
   }
 
   async getSubmissions(code: string) {
-    return (await this.redis.hvals(subsKey(code))) as string[];
+    return ((await this.redis.hgetall(subsKey(code))) ?? {}) as Record<
+      string,
+      string
+    >;
   }
 }
 
 // In-memory store for local development only. State lives in a single
 // process, so it can never work on Vercel; getStore() refuses to use it
 // there.
-type MemoryGame = { meta: GameMeta; subs: Map<string, string> };
+type MemoryGame = {
+  meta: GameMeta;
+  players: Map<string, string>;
+  subs: Map<string, string>;
+};
 
 class MemoryStore implements Store {
   private games: Map<string, MemoryGame>;
@@ -82,7 +106,7 @@ class MemoryStore implements Store {
 
   async createGame(code: string, meta: GameMeta) {
     this.prune();
-    this.games.set(code, { meta, subs: new Map() });
+    this.games.set(code, { meta, players: new Map(), subs: new Map() });
   }
 
   async getGame(code: string) {
@@ -94,13 +118,20 @@ class MemoryStore implements Store {
     if (game) game.meta = meta;
   }
 
+  async setPlayer(code: string, playerId: string, name: string) {
+    this.games.get(code)?.players.set(playerId, name);
+  }
+
+  async getPlayers(code: string) {
+    return Object.fromEntries(this.games.get(code)?.players ?? []);
+  }
+
   async setSubmission(code: string, playerId: string, name: string) {
     this.games.get(code)?.subs.set(playerId, name);
   }
 
   async getSubmissions(code: string) {
-    const subs = this.games.get(code)?.subs;
-    return subs ? [...subs.values()] : [];
+    return Object.fromEntries(this.games.get(code)?.subs ?? []);
   }
 }
 

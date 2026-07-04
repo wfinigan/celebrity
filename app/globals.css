@@ -5,15 +5,25 @@
 }
 
 :root {
-  --bg: #12101a;
-  --card: #1e1a2b;
-  --text: #f2effa;
-  --muted: #9b93b8;
-  --accent: #ffb636;
-  --accent-text: #241a02;
-  --border: #35304a;
-  --error: #ff7b7b;
-  --success: #6fdd8b;
+  --paper: #fbfaf7;
+  --ink: #1c1c20;
+  --muted: #71717b;
+  --line: #e7e5dd;
+  --accent: #2c49d8;
+  --error: #b3362a;
+  --success: #2e7d4f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141417;
+    --ink: #f1efe9;
+    --muted: #9b9ba5;
+    --line: #2b2b31;
+    --accent: #93a7ff;
+    --error: #ff9385;
+    --success: #85d3a5;
+  }
 }
 
 html,
@@ -22,84 +32,137 @@ body {
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 .container {
-  max-width: 480px;
+  max-width: 25rem;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 3rem 1.5rem 4.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2.25rem;
 }
 
 h1 {
-  font-size: 2rem;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  font-size: 2.1rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 h2 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 600;
+  text-wrap: balance;
 }
 
 p {
+  max-width: 60ch;
+}
+
+.lede,
+.hint {
   color: var(--muted);
 }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem;
+.hint {
+  font-size: 0.9rem;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.stack {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
+.rule {
+  border: none;
+  border-top: 1px solid var(--line);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
 .button {
   appearance: none;
   border: none;
-  border-radius: 10px;
-  padding: 0.85rem 1.25rem;
-  font-size: 1.05rem;
-  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.9rem 1.25rem;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  background: var(--accent);
-  color: var(--accent-text);
-  transition: transform 0.05s ease;
   width: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  transition: transform 0.05s ease, opacity 0.15s ease;
 }
 
 .button:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+}
+
+.button:focus-visible,
+.input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .button-secondary {
   background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
+  color: var(--ink);
+  border: 1px solid var(--line);
 }
 
 .input {
   appearance: none;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
   padding: 0.85rem 1rem;
-  font-size: 1.05rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.input::placeholder {
+  color: var(--muted);
 }
 
 .input:focus {
@@ -109,47 +172,81 @@ p {
 
 .input-code {
   text-transform: uppercase;
-  letter-spacing: 0.35em;
   text-align: center;
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em; /* re-center: tracking adds space after the last letter */
 }
 
 .code-badge {
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: 0.25em;
-  text-align: center;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: 0.14em;
   color: var(--accent);
 }
 
 .count {
-  font-size: 3rem;
-  font-weight: 800;
-  text-align: center;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  font-size: 3.5rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .count-label {
-  text-align: center;
   color: var(--muted);
-  margin-top: -0.75rem;
-}
-
-.flashcard {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 2.4rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  min-height: 11rem;
-  overflow-wrap: anywhere;
+  margin-top: 0.4rem;
 }
 
 .flash-meta {
-  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--muted);
-  font-size: 0.95rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.flashcard {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(2.4rem, 11vw, 3.6rem);
+  line-height: 1.08;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  min-height: 38vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .flashcard {
+    animation: flash-in 0.18s ease;
+  }
+
+  @keyframes flash-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+.share-link {
+  color: var(--muted);
+  font-size: 0.9rem;
+  word-break: break-all;
 }
 
 .error {
@@ -158,13 +255,6 @@ p {
 
 .success {
   color: var(--success);
-}
-
-.share-link {
-  font-size: 0.95rem;
-  color: var(--muted);
-  word-break: break-all;
-  text-align: center;
 }
 
 .center {

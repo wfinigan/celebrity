@@ -36,7 +36,13 @@ export async function POST(
   }
 
   const total = game.order.length;
+  if (game.locked) {
+    return NextResponse.json({ done: true, total, served: game.served });
+  }
   if (game.served >= total * MAX_PASSES) {
+    // The reader confirmed past the last name — lock the list for good.
+    game.locked = true;
+    await store.setGame(code, game);
     return NextResponse.json({ done: true, total, served: game.served });
   }
 
@@ -47,6 +53,6 @@ export async function POST(
     name: game.order[(game.served - 1) % total],
     served: game.served,
     total,
-    done: game.served >= total * MAX_PASSES,
+    done: false,
   });
 }

@@ -18,6 +18,7 @@ export async function POST() {
       revealed: false,
       order: [],
       served: 0,
+      locked: false,
       createdAt: Date.now(),
     });
     return NextResponse.json({ code, hostToken });
